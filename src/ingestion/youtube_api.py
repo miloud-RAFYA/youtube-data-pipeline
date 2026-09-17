@@ -2,7 +2,7 @@ import os
 
 import requests
 from dotenv import load_dotenv
-
+from src.database.raw_storage import save_json 
 
 load_dotenv()
 
@@ -163,17 +163,174 @@ def format_video(video):
         "likeCount": video["statistics"].get("likeCount", "0"),
         "commentCount": video["statistics"].get("commentCount", "0"),
     }
-
-
-if __name__ == "__main__":
+def extract_channel():
     data = get_channel_data()
 
+    if not data:
+        raise ValueError(
+            "Impossible de récupérer les informations de la chaîne."
+        )
+
+    if not data.get("items"):
+        raise ValueError("Aucune chaîne trouvée.")
+
+    save_json(data, "channel.json")
+
+    print("Chaîne récupérée et sauvegardée dans channel.json")
+
+
+def extract_videos():
+    from src.database.raw_storage import load_json
+
+    channel_data = load_json("channel.json")
+
+    if not channel_data.get("items"):
+        raise ValueError(
+            "Aucune chaîne trouvée dans channel.json."
+        )
+
+    channel = channel_data["items"][0]
+
+    uploads_playlist_id = (
+        channel["contentDetails"]["relatedPlaylists"]["uploads"]
+    )
+
+    playlist_videos = get_videos_from_playlist(
+        uploads_playlist_id
+    )
+
+    if playlist_videos is None:
+        raise ValueError(
+            "Impossible de récupérer les vidéos de la chaîne."
+        )
+
+    video_ids = [
+        video["contentDetails"]["videoId"]
+        for video in playlist_videos
+    ]
+
+    if not video_ids:
+        raise ValueError("Aucune vidéo trouvée.")
+
+    save_json(video_ids, "video_ids.json")
+
+    print(
+        "IDs des vidéos récupérés :",
+        len(video_ids)
+    )
+
+
+def extract_video_details():
+    from src.database.raw_storage import load_json
+
+    video_ids = load_json("video_ids.json")
+
+    if not video_ids:
+        raise ValueError("Aucun ID vidéo trouvé.")
+
+    videos_details = get_video_details(video_ids)
+
+    if videos_details is None:
+        raise ValueError(
+            "Impossible de récupérer les détails des vidéos."
+        )
+
+    save_json(videos_details, "video_details.json")
+
+    print(
+        "Détails des vidéos récupérés :",
+        len(videos_details)
+    )
+
+
+def generate_videos_json():
+    from src.database.raw_storage import load_json
+
+    videos_details = load_json("video_details.json")
+
+    formatted_videos = [
+        format_video(video)
+        for video in videos_details
+    ]
+
+    save_json(formatted_videos, "videos.json")
+
+    print(
+        "JSON final généré :",
+        len(formatted_videos),
+        "vidéos."
+    )
+def extract_youtube_data():
+    data = get_channel_data()
+
+    if not data:
+        raise ValueError(
+            "Impossible de récupérer les informations de la chaîne."
+        )
+
+    print("Connexion à YouTube API réussie !")
+
+    save_json(data, "channel.json")
+
+    if not data.get("items"):
+        raise ValueError("Aucune chaîne trouvée.")
+
+    channel = data["items"][0]
+
+    uploads_playlist_id = (
+        channel["contentDetails"]["relatedPlaylists"]["uploads"]
+    )
+
+    playlist_videos = get_videos_from_playlist(
+        uploads_playlist_id
+    )
+
+    if playlist_videos is None:
+        raise ValueError(
+            "Impossible de récupérer les vidéos de la chaîne."
+        )
+
+    print(
+        "Nombre total de vidéos récupérées :",
+        len(playlist_videos)
+    )
+
+    video_ids = [
+        video["contentDetails"]["videoId"]
+        for video in playlist_videos
+    ]
+
+    if not video_ids:
+        raise ValueError("Aucune vidéo trouvée.")
+
+    videos_details = get_video_details(video_ids)
+
+    if videos_details is None:
+        raise ValueError(
+            "Impossible de récupérer les détails des vidéos."
+        )
+
+    formatted_videos = [
+        format_video(video)
+        for video in videos_details
+    ]
+
+    save_json(formatted_videos, "videos.json")
+
+    print(
+        "Extraction YouTube terminée :",
+        len(formatted_videos),
+        "vidéos."
+    )
+    
+if __name__ == "__main__":
+    data = get_channel_data()
     if not data:
         print("Impossible de récupérer les informations de la chaîne.")
 
     else:
         print("Connexion à YouTube API réussie !")
-
+        save_json(data,"channel.json")
         if data.get("items"):
             channel = data["items"][0]
 
@@ -235,6 +392,7 @@ if __name__ == "__main__":
                             formatted_videos.append(
                                 format_video(video)
                             )
+                        save_json(formatted_videos, "videos.json")
 
                         print("\nVidéos formatées :")
 

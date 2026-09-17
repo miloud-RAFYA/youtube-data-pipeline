@@ -19,7 +19,11 @@ htmlcov/
 .idea/
 
 # Logs
+logs/
 *.log
+
+# Données générées par le pipeline
+data/raw/
 
 # OS
 .DS_Store
